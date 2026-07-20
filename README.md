@@ -11,10 +11,11 @@ It authenticates users via PAM and seamlessly hands off control to [uwsm](https:
 ## Table of Contents
 - [Previews](#previews)
 - [Features](#features)
-- [Installation](#installation)
-- [Systemd Service](#systemd-service)
-- [Usage & Flags](#usage--flags)
 - [How it Works](#how-it-works)
+- [Installation](#installation)
+- [Usage & Flags](#usage--flags)
+- [Systemd Service](#systemd-service)
+- [Uninstallation](#uninstallation)
 - [Development](#development)
 - [Tech Stack](#tech-stack)
 
@@ -43,6 +44,33 @@ It authenticates users via PAM and seamlessly hands off control to [uwsm](https:
 ---
 
 
+## How it Works
+
+Unlike heavy graphical display managers (like GDM or SDDM), `tlmd` runs purely in the TTY. It acts as the direct bridge between your system boot and your Wayland compositor.
+
+```mermaid
+graph TD
+    A([Power On]) --> B[GRUB / Bootloader]
+    B --> C[tty1: tlmd]
+    
+    subgraph Terminal Login Manager Daemon
+    C --> D[List & Select User]
+    D --> E{PAM Authentication}
+    E -->|Success| F{uwsm installed?}
+    end
+    
+    F -->|Yes| G[uwsm select]
+    F -.->|No| H([User's Default Shell])
+    
+    G -->|Starts Wayland| I([Compositor / Desktop])
+```
+
+> [!NOTE]
+> **Fallback Safety:** If `uwsm` is not installed or fails to launch (e.g., due to a missing compositor or driver error), `tlmd` won't lock you out. It safely falls back to launching your default shell (`/bin/bash` or `/bin/zsh`) right there in the TTY.
+
+---
+
+
 ## Installation
 
 ---
@@ -63,40 +91,6 @@ cargo build --release
 
 # Move the binary to your system path
 sudo cp target/release/tlmd /usr/local/bin/
-```
-
-
-## Systemd Service
-
----
-
-To run `tlmd` automatically at boot on your main TTY (`tty1`), you need to create a systemd service.
-
-1. Create a new service file at `/etc/systemd/system/tlmd.service`:
-```ini
-[Unit]
-Description=Terminal Login Manager Daemon
-Documentation=https://github.com/yourusername/tlmd
-After=systemd-user-sessions.service plymouth-quit-wait.service
-Conflicts=getty@tty1.service
-
-[Service]
-ExecStart=/usr/local/bin/tlmd --icon=outline
-Type=idle
-StandardInput=tty
-StandardOutput=tty
-TTYPath=/dev/tty1
-TTYReset=yes
-TTYVHangup=yes
-
-[Install]
-WantedBy=graphical.target
-```
-
-2. Disable the default `agetty` on `tty1` and enable `tlmd`:
-```bash
-sudo systemctl disable getty@tty1.service
-sudo systemctl enable tlmd.service
 ```
 
 
@@ -148,31 +142,58 @@ tlmd --icon=outline
 ```
 
 
-## How it Works
-
-Unlike heavy graphical display managers (like GDM or SDDM), `tlmd` runs purely in the TTY. It acts as the direct bridge between your system boot and your Wayland compositor.
-
-```mermaid
-graph TD
-    A([Power On]) --> B[GRUB / Bootloader]
-    B --> C[tty1: tlmd]
-    
-    subgraph Terminal Login Manager Daemon
-    C --> D[List & Select User]
-    D --> E{PAM Authentication}
-    E -->|Success| F{uwsm installed?}
-    end
-    
-    F -->|Yes| G[uwsm select]
-    F -.->|No| H([User's Default Shell])
-    
-    G -->|Starts Wayland| I([Compositor / Desktop])
-```
-
-> [!NOTE]
-> **Fallback Safety:** If `uwsm` is not installed or fails to launch (e.g., due to a missing compositor or driver error), `tlmd` won't lock you out. It safely falls back to launching your default shell (`/bin/bash` or `/bin/zsh`) right there in the TTY.
+## Systemd Service
 
 ---
+
+To run `tlmd` automatically at boot on your main TTY (`tty1`), you need to create a systemd service.
+
+1. Create a new service file at `/etc/systemd/system/tlmd.service`:
+```ini
+[Unit]
+Description=Terminal Login Manager Daemon
+Documentation=https://github.com/yourusername/tlmd
+After=systemd-user-sessions.service plymouth-quit-wait.service
+Conflicts=getty@tty1.service
+
+[Service]
+ExecStart=/usr/local/bin/tlmd --icon=outline
+Type=idle
+StandardInput=tty
+StandardOutput=tty
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+
+[Install]
+WantedBy=graphical.target
+```
+
+2. Disable the default `agetty` on `tty1` and enable `tlmd`:
+```bash
+sudo systemctl disable getty@tty1.service
+sudo systemctl enable tlmd.service
+```
+
+
+## Uninstallation
+
+---
+
+If you want to revert to the default Linux login prompt:
+
+```bash
+# 1. Disable tlmd and re-enable agetty on tty1
+sudo systemctl disable tlmd.service
+sudo systemctl enable getty@tty1.service
+
+# 2. Remove the systemd service file
+sudo rm /etc/systemd/system/tlmd.service
+sudo systemctl daemon-reload
+
+# 3. Remove the binary
+sudo rm /usr/local/bin/tlmd
+```
 
 
 ## Development
