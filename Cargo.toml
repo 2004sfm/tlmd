@@ -4,3 +4,10 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+crossterm = "0.29"
+unicode-width = "0.2"
+pam-client2 = "0.5"
+uzers = "0.12.2"
+nix = { version = "0.31.3", features = ["user"] }
+zeroize = { version = "1.9.0", features = ["alloc"] }
+ctrlc = "3.5.2"
