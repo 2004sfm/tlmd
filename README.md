@@ -157,7 +157,7 @@ After=systemd-user-sessions.service plymouth-quit-wait.service
 Conflicts=getty@tty1.service
 
 [Service]
-ExecStart=/usr/local/bin/tlmd --icon=outline
+ExecStart=/usr/local/bin/tlmd
 Type=idle
 StandardInput=tty
 StandardOutput=tty
