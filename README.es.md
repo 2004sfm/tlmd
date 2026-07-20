@@ -30,12 +30,13 @@ graph TD
     subgraph Terminal Login Manager Daemon
     C --> D[Lista & Selección de Usuario]
     D --> E{Autenticación PAM}
+    E -->|Éxito| F{¿uwsm instalado?}
     end
     
-    E -->|Éxito| F[selección de uwsm]
+    F -->|Sí| G[selección de uwsm]
+    F -.->|No| H([Shell por defecto del usuario])
     
-    F -->|Inicia Wayland| G([Compositor / Escritorio])
-    F -.->|Respaldo| H([Shell por defecto del usuario])
+    G -->|Inicia Wayland| I([Compositor / Escritorio])
 ```
 
 > [!NOTE]
