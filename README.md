@@ -9,52 +9,15 @@ It authenticates users via PAM and seamlessly hands off control to [uwsm](https:
 ---
 
 ## Table of Contents
-- [How it Works](#how-it-works)
-- [Features](#features)
 - [Previews](#previews)
+- [Features](#features)
 - [Installation](#installation)
 - [Systemd Service](#systemd-service)
 - [Usage & Flags](#usage--flags)
+- [How it Works](#how-it-works)
 - [Development](#development)
 - [Tech Stack](#tech-stack)
 
-
-
-## How it Works
-
-Unlike heavy graphical display managers (like GDM or SDDM), `tlmd` runs purely in the TTY. It acts as the direct bridge between your system boot and your Wayland compositor.
-
-```mermaid
-graph TD
-    A([Power On]) --> B[GRUB / Bootloader]
-    B --> C[tty1: tlmd]
-    
-    subgraph Terminal Login Manager Daemon
-    C --> D[List & Select User]
-    D --> E{PAM Authentication}
-    E -->|Success| F{uwsm installed?}
-    end
-    
-    F -->|Yes| G[uwsm select]
-    F -.->|No| H([User's Default Shell])
-    
-    G -->|Starts Wayland| I([Compositor / Desktop])
-```
-
-> [!NOTE]
-> **Fallback Safety:** If `uwsm` is not installed or fails to launch (e.g., due to a missing compositor or driver error), `tlmd` won't lock you out. It safely falls back to launching your default shell (`/bin/bash` or `/bin/zsh`) right there in the TTY.
-
----
-
-
-## Features
-
-- **PAM Authentication:** Direct PAM integration on the TTY. No graphical daemons, no D-Bus dependency at login time.
-- **User Selection & Search:** Navigate system users with `↑`/`↓` + `Enter`. You can also type directly to search and filter users instantly!
-- **True Black Aesthetic:** `#000000` background, `#ffffff` text, `#888888` (DIM) borders. OLED-friendly, zero visual noise, perfectly centered mathematically.
-- **Memory Safe:** Written in Rust (edition 2024). This is critical since `tlmd` runs as root before authentication completes.
-
----
 
 
 ## Previews
@@ -66,6 +29,16 @@ graph TD
 **Password Prompt**
 ![Password Prompt](assets/login_prompt.png)
 *Secure, masked password input with instant visual feedback.*
+
+---
+
+
+## Features
+
+- **PAM Authentication:** Direct PAM integration on the TTY. No graphical daemons, no D-Bus dependency at login time.
+- **User Selection & Search:** Navigate system users with `↑`/`↓` + `Enter`. You can also type directly to search and filter users instantly!
+- **True Black Aesthetic:** `#000000` background, `#ffffff` text, `#888888` (DIM) borders. OLED-friendly, zero visual noise, perfectly centered mathematically.
+- **Memory Safe:** Written in Rust (edition 2024). This is critical since `tlmd` runs as root before authentication completes.
 
 ---
 
@@ -173,6 +146,33 @@ tlmd --icon=outline
 ▀▄                 ▄▀
   ▀▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▀  
 ```
+
+
+## How it Works
+
+Unlike heavy graphical display managers (like GDM or SDDM), `tlmd` runs purely in the TTY. It acts as the direct bridge between your system boot and your Wayland compositor.
+
+```mermaid
+graph TD
+    A([Power On]) --> B[GRUB / Bootloader]
+    B --> C[tty1: tlmd]
+    
+    subgraph Terminal Login Manager Daemon
+    C --> D[List & Select User]
+    D --> E{PAM Authentication}
+    E -->|Success| F{uwsm installed?}
+    end
+    
+    F -->|Yes| G[uwsm select]
+    F -.->|No| H([User's Default Shell])
+    
+    G -->|Starts Wayland| I([Compositor / Desktop])
+```
+
+> [!NOTE]
+> **Fallback Safety:** If `uwsm` is not installed or fails to launch (e.g., due to a missing compositor or driver error), `tlmd` won't lock you out. It safely falls back to launching your default shell (`/bin/bash` or `/bin/zsh`) right there in the TTY.
+
+---
 
 
 ## Development

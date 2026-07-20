@@ -9,49 +9,16 @@ Autentica a los usuarios a través de PAM y transfiere el control de forma trans
 ---
 
 ## Índice
-- [Cómo Funciona](#cómo-funciona)
-- [Características](#características)
 - [Vistas Previas](#vistas-previas)
+- [Características](#características)
 - [Instalación](#instalación)
 - [Servicio Systemd](#servicio-systemd)
 - [Uso y Flags](#uso-y-flags)
+- [Cómo Funciona](#cómo-funciona)
 - [Desarrollo](#desarrollo)
 - [Tecnologías](#tecnologías)
 
-## Cómo Funciona
 
-A diferencia de los gestores de pantalla gráficos pesados (como GDM o SDDM), `tlmd` se ejecuta puramente en la TTY. Actúa como el puente directo entre el inicio de tu sistema y tu compositor Wayland.
-
-```mermaid
-graph TD
-    A([Encendido]) --> B[GRUB / Bootloader]
-    B --> C[tty1: tlmd]
-    
-    subgraph Terminal Login Manager Daemon
-    C --> D[Lista & Selección de Usuario]
-    D --> E{Autenticación PAM}
-    E -->|Éxito| F{¿uwsm instalado?}
-    end
-    
-    F -->|Sí| G[selección de uwsm]
-    F -.->|No| H([Shell por defecto del usuario])
-    
-    G -->|Inicia Wayland| I([Compositor / Escritorio])
-```
-
-> [!NOTE]
-> **Seguridad de Respaldo:** Si `uwsm` no está instalado o falla al iniciar (ej., por falta de compositor o error de driver), `tlmd` no te dejará bloqueado. Volverá de forma segura a ejecutar tu shell por defecto (`/bin/bash` o `/bin/zsh`) allí mismo en la TTY.
-
----
-
-## Características
-
-- **Autenticación PAM:** Integración directa de PAM en la TTY. Sin daemons gráficos, sin dependencia de D-Bus al momento de iniciar sesión.
-- **Selección de Usuario y Búsqueda:** Navegá entre los usuarios del sistema con `↑`/`↓` + `Enter`. ¡También podés escribir directamente para buscar y filtrar usuarios al instante!
-- **Estética Negro Puro:** Fondo `#000000`, texto `#ffffff`, bordes `#888888` (DIM). Amigable con pantallas OLED, cero ruido visual, matemáticamente centrado a la perfección.
-- **Memoria Segura:** Escrito en Rust (edición 2024). Esto es crítico ya que `tlmd` se ejecuta como root antes de que se complete la autenticación.
-
----
 
 ## Vistas Previas
 
@@ -64,6 +31,17 @@ graph TD
 *Entrada de contraseña segura y oculta con feedback visual instantáneo.*
 
 ---
+
+
+## Características
+
+- **Autenticación PAM:** Integración directa de PAM en la TTY. Sin daemons gráficos, sin dependencia de D-Bus al momento de iniciar sesión.
+- **Selección de Usuario y Búsqueda:** Navegá entre los usuarios del sistema con `↑`/`↓` + `Enter`. ¡También podés escribir directamente para buscar y filtrar usuarios al instante!
+- **Estética Negro Puro:** Fondo `#000000`, texto `#ffffff`, bordes `#888888` (DIM). Amigable con pantallas OLED, cero ruido visual, matemáticamente centrado a la perfección.
+- **Memoria Segura:** Escrito en Rust (edición 2024). Esto es crítico ya que `tlmd` se ejecuta como root antes de que se complete la autenticación.
+
+---
+
 
 ## Instalación
 
@@ -86,6 +64,7 @@ cargo build --release
 # Mover el binario a tu path del sistema
 sudo cp target/release/tlmd /usr/local/bin/
 ```
+
 
 ## Servicio Systemd
 
@@ -119,6 +98,7 @@ WantedBy=graphical.target
 sudo systemctl disable getty@tty1.service
 sudo systemctl enable tlmd.service
 ```
+
 
 ## Uso y Flags
 
@@ -167,6 +147,34 @@ tlmd --icon=outline
   ▀▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▀  
 ```
 
+
+## Cómo Funciona
+
+A diferencia de los gestores de pantalla gráficos pesados (como GDM o SDDM), `tlmd` se ejecuta puramente en la TTY. Actúa como el puente directo entre el inicio de tu sistema y tu compositor Wayland.
+
+```mermaid
+graph TD
+    A([Encendido]) --> B[GRUB / Bootloader]
+    B --> C[tty1: tlmd]
+    
+    subgraph Terminal Login Manager Daemon
+    C --> D[Lista & Selección de Usuario]
+    D --> E{Autenticación PAM}
+    E -->|Éxito| F{¿uwsm instalado?}
+    end
+    
+    F -->|Sí| G[selección de uwsm]
+    F -.->|No| H([Shell por defecto del usuario])
+    
+    G -->|Inicia Wayland| I([Compositor / Escritorio])
+```
+
+> [!NOTE]
+> **Seguridad de Respaldo:** Si `uwsm` no está instalado o falla al iniciar (ej., por falta de compositor o error de driver), `tlmd` no te dejará bloqueado. Volverá de forma segura a ejecutar tu shell por defecto (`/bin/bash` o `/bin/zsh`) allí mismo en la TTY.
+
+---
+
+
 ## Desarrollo
 
 ---
@@ -184,6 +192,7 @@ sudo ./target/debug/tlmd
 
 > [!NOTE]
 > Si ejecutás `cargo run` sin `sudo`, PAM te restringe para que sólo puedas autenticar el usuario con el que tenés la sesión iniciada actualmente. Debés compilar el binario y ejecutarlo con `sudo` para probar la autenticación en otras cuentas.
+
 
 ## Tecnologías
 
