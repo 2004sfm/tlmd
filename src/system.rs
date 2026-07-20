@@ -61,6 +61,7 @@ pub fn launch_uwsm(username: &str, envlist: pam_client2::env_list::EnvList) {
         .env("HOME", &env_home)
         .env("USER", &env_user)
         .env("LOGNAME", &env_user)
+        .env("TERM", std::env::var("TERM").unwrap_or_else(|_| "linux".to_string()))
         .status();
     
     if let Ok(sel_st) = select_status {
@@ -75,6 +76,7 @@ pub fn launch_uwsm(username: &str, envlist: pam_client2::env_list::EnvList) {
                 .env("HOME", &env_home)
                 .env("USER", &env_user)
                 .env("LOGNAME", &env_user)
+                .env("TERM", std::env::var("TERM").unwrap_or_else(|_| "linux".to_string()))
                 .exec();
             eprintln!("Failed to exec uwsm start default: {err}");
         }
@@ -89,6 +91,7 @@ pub fn launch_uwsm(username: &str, envlist: pam_client2::env_list::EnvList) {
         .env("HOME", &env_home)
         .env("USER", &env_user)
         .env("LOGNAME", &env_user)
+        .env("TERM", std::env::var("TERM").unwrap_or_else(|_| "linux".to_string()))
         .exec();
 
     eprintln!("Failed to exec fallback shell: {shell_err}");

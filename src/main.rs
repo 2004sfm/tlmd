@@ -172,6 +172,13 @@ fn main() -> io::Result<()> {
     terminal::disable_raw_mode()?;
 
     if let Ok(Some(tx)) = result {
+        // Clear the screen so TTY logs don't bleed into the next application
+        let _ = execute!(
+            std::io::stdout(),
+            crossterm::terminal::Clear(crossterm::terminal::ClearType::All),
+            crossterm::cursor::MoveTo(0, 0)
+        );
+
         // Signal background thread to exec
         let _ = tx.send(());
         // Sleep so background thread has time to exec and replace the process
