@@ -43,38 +43,40 @@ pub fn launch_uwsm(username: &str, envlist: pam_client2::env_list::EnvList) {
         let _ = initgroups(&c_user, Gid::from_raw(user.primary_group_id()));
     }
 
-    // 1. Check if we may start
-    let may_start = std::process::Command::new("uwsm")
-        .arg("check")
-        .arg("may-start")
+    // Change to user's home directory so they don't start in '/'
+    if let Err(e) = std::env::set_current_dir(user.home_dir()) {
+        eprintln!("Warning: Failed to change directory to home: {e}");
+    }
+
+    // Make sure basic environment variables are present just in case PAM missed them
+    let env_home = user.home_dir().to_string_lossy().into_owned();
+    let env_user = username.to_string();
+
+    // 1. Run uwsm select (allows user to select compositor if needed)
+    let select_status = std::process::Command::new("uwsm")
+        .arg("select")
         .uid(user.uid())
         .gid(user.primary_group_id())
         .envs(envlist.iter_tuples())
+        .env("HOME", &env_home)
+        .env("USER", &env_user)
+        .env("LOGNAME", &env_user)
         .status();
-
-    if let Ok(st) = may_start {
-        if st.success() {
-            // 2. Run uwsm select (allows user to select compositor if needed)
-            let select_status = std::process::Command::new("uwsm")
-                .arg("select")
+    
+    if let Ok(sel_st) = select_status {
+        if sel_st.success() {
+            // 2. Exec into the selected compositor
+            let err = std::process::Command::new("uwsm")
+                .arg("start")
+                .arg("default")
                 .uid(user.uid())
                 .gid(user.primary_group_id())
                 .envs(envlist.iter_tuples())
-                .status();
-            
-            if let Ok(sel_st) = select_status {
-                if sel_st.success() {
-                    // 3. Exec into the selected compositor
-                    let err = std::process::Command::new("uwsm")
-                        .arg("start")
-                        .arg("default")
-                        .uid(user.uid())
-                        .gid(user.primary_group_id())
-                        .envs(envlist.iter_tuples())
-                        .exec();
-                    eprintln!("Failed to exec uwsm start default: {err}");
-                }
-            }
+                .env("HOME", &env_home)
+                .env("USER", &env_user)
+                .env("LOGNAME", &env_user)
+                .exec();
+            eprintln!("Failed to exec uwsm start default: {err}");
         }
     }
 
@@ -84,6 +86,9 @@ pub fn launch_uwsm(username: &str, envlist: pam_client2::env_list::EnvList) {
         .uid(user.uid())
         .gid(user.primary_group_id())
         .envs(envlist.iter_tuples()) // Pass the PAM env variables
+        .env("HOME", &env_home)
+        .env("USER", &env_user)
+        .env("LOGNAME", &env_user)
         .exec();
 
     eprintln!("Failed to exec fallback shell: {shell_err}");
