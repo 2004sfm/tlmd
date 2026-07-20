@@ -179,10 +179,15 @@ fn main() -> io::Result<()> {
             crossterm::cursor::MoveTo(0, 0)
         );
 
-        // Signal background thread to exec
+        // Signal background thread to proceed with uwsm select and exec
         let _ = tx.send(());
-        // Sleep so background thread has time to exec and replace the process
-        std::thread::sleep(Duration::from_secs(5));
+        
+        // Wait forever. The background thread is now running `uwsm select` (which waits for user input)
+        // and will eventually `exec` into the graphical session. When `exec` happens, the entire
+        // process is replaced by the OS, so this infinite sleep will automatically be killed.
+        loop {
+            std::thread::park();
+        }
     }
 
     Ok(())
