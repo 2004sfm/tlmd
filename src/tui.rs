@@ -31,7 +31,11 @@ pub enum IconStyle {
 
 /// Render the current screen.
 pub fn render(w: &mut impl Write, app: &App) -> io::Result<()> {
-    queue!(w, SetBackgroundColor(BG), Clear(ClearType::All))?;
+    if app.needs_clear {
+        queue!(w, SetBackgroundColor(BG), Clear(ClearType::All))?;
+    } else {
+        queue!(w, SetBackgroundColor(BG))?;
+    }
 
     let (cols, rows) = terminal::size()?;
 

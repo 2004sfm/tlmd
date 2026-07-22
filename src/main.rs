@@ -57,6 +57,8 @@ pub struct App {
     pub auth_success: bool,
     /// Icon style to display
     pub icon_style: tui::IconStyle,
+    /// If true, the renderer will issue a full terminal clear before drawing.
+    pub needs_clear: bool,
 }
 
 impl App {
@@ -92,6 +94,7 @@ impl App {
             exec_tx: None,
             auth_success: false,
             icon_style,
+            needs_clear: true,
         }
     }
 
@@ -212,6 +215,7 @@ fn run(stdout: &mut impl Write) -> io::Result<Option<Sender<()>>> {
                         app.authenticating = false;
                         app.auth_rx = None;
                         app.auth_error = true;
+                        app.needs_clear = true;
                         app.password.clear();
                     }
                     Err(TryRecvError::Empty) => {
@@ -223,6 +227,7 @@ fn run(stdout: &mut impl Write) -> io::Result<Option<Sender<()>>> {
         }
 
         tui::render(stdout, &app)?;
+        app.needs_clear = false;
 
         let poll_timeout = if app.authenticating {
             Duration::from_millis(100) // ~10fps for spinner
@@ -381,6 +386,7 @@ fn handle_user_select(app: &mut App, key: KeyEvent) {
             app.auth_error = false;
             app.button_focus = None;
             app.screen = Screen::Login;
+            app.needs_clear = true;
         }
         KeyCode::Char('/') => {
             app.search_active = true;
@@ -451,6 +457,7 @@ fn handle_search(app: &mut App, key: KeyEvent) {
                 app.auth_error = false;
                 app.button_focus = None;
                 app.screen = Screen::Login;
+                app.needs_clear = true;
             }
         }
         KeyCode::Backspace => {
@@ -507,6 +514,7 @@ fn handle_login(app: &mut App, key: KeyEvent) {
             app.auth_error = false;
             app.button_focus = None;
             app.screen = Screen::UserSelect;
+            app.needs_clear = true;
         }
         KeyCode::Enter => {
             let username = app.selected_username().unwrap_or("").to_string();
@@ -565,6 +573,7 @@ fn handle_login_buttons(app: &mut App, key: KeyEvent) {
             app.auth_error = false;
             app.button_focus = None;
             app.screen = Screen::UserSelect;
+            app.needs_clear = true;
         }
         KeyCode::Enter => {
             match focus {
@@ -574,6 +583,8 @@ fn handle_login_buttons(app: &mut App, key: KeyEvent) {
                     app.auth_error = false;
                     app.button_focus = None;
                     app.screen = Screen::UserSelect;
+            app.needs_clear = true;
+                    app.needs_clear = true;
                 }
                 1 => {
                     // Confirm
