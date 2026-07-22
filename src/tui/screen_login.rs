@@ -79,20 +79,26 @@ pub fn render(
             }
         }
         
-        // Calculate the visual width of ONLY the asterisks (ignoring "> " and the cursor "█")
+        // We dynamically center the asterisks just like before, but we build a 
+        // fixed-width background block of spaces (28 chars wide) to erase any 
+        // trailing ghosts when deleting characters, avoiding TTY flicker.
         let ast_width = masked.chars().count() as u16;
         let ast_x = x + (BOX_WIDTH.saturating_sub(ast_width)) / 2;
-        
         let prefix_x = ast_x.saturating_sub(2);
-        let input_y = y + 4 + offset;
-
-        // Draw the prefix ("> ") which hangs to the left
-        draw_text(w, prefix_x, input_y, "> ", FG, BG)?;
         
-        // Draw the asterisks in their position
-        if !masked.is_empty() {
-            draw_text(w, ast_x, input_y, &masked, FG, BG)?;
-        }
+        let clear_start = x + 15;
+        let clear_width: usize = 28;
+        let rel_prefix = (prefix_x - clear_start) as usize;
+        
+        let left_spaces = " ".repeat(rel_prefix);
+        let visual_text = format!("> {masked}");
+        let right_spaces_count = clear_width.saturating_sub(rel_prefix + visual_text.chars().count());
+        let right_spaces = " ".repeat(right_spaces_count);
+        
+        let row = format!("{left_spaces}{visual_text}{right_spaces}");
+        
+        let input_y = y + 4 + offset;
+        draw_text(w, clear_start, input_y, &row, FG, BG)?;
 
         // Action buttons
         draw_button_pair(

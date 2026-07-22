@@ -4,7 +4,7 @@ use crossterm::{queue, style::SetBackgroundColor};
 
 use super::{
     draw_box, draw_button_pair, draw_highlighted_row, draw_hints, draw_normal_row, draw_text, BG,
-    BOX_WIDTH, DIM, FG,
+    BOX_WIDTH, FG,
 };
 
 /// Maximum number of users visible at once before scrolling kicks in.
@@ -66,9 +66,13 @@ pub fn render(
         } else {
             "No users found"
         };
-        draw_text(w, x + 2, y + 2, msg, DIM, BG)?;
+        draw_normal_row(w, x, y + 2, msg, actual_width)?;
+        // Fill the rest of the visible list height with blanks
+        for i in 1..visible_count {
+            draw_normal_row(w, x, y + 2 + i as u16, "", actual_width)?;
+        }
     } else {
-        let scroll_offset = compute_scroll_offset(selected_index, users.len(), MAX_VISIBLE);
+        let scroll_offset = compute_scroll_offset(selected_index, users.len(), visible_count);
 
         let end = (scroll_offset + visible_count).min(users.len());
         for (i, user) in users[scroll_offset..end].iter().enumerate() {
@@ -78,8 +82,14 @@ pub fn render(
             if actual_index == selected_index && button_focus.is_none() {
                 draw_highlighted_row(w, x, row_y, user, actual_width)?;
             } else {
-                draw_normal_row(w, x, row_y, user)?;
+                draw_normal_row(w, x, row_y, user, actual_width)?;
             }
+        }
+        
+        // Fill the remaining visible slots with blanks if fewer than visible_count users
+        let drawn_users = end.saturating_sub(scroll_offset);
+        for i in drawn_users..visible_count {
+            draw_normal_row(w, x, y + 2 + i as u16, "", actual_width)?;
         }
     }
 
@@ -91,7 +101,7 @@ pub fn render(
     
     if search_active {
         let search_display = format!("/ {search_query}");
-        draw_text(w, x + 2, bottom_y, &search_display, FG, BG)?;
+        draw_normal_row(w, x, bottom_y, &search_display, actual_width)?;
         cursor_pos = Some((x + 2 + search_display.chars().count() as u16, bottom_y));
     } else {
         draw_button_pair(w, x, bottom_y, actual_width, "Reboot", "Shutdown", button_focus)?;

@@ -241,7 +241,14 @@ fn run(stdout: &mut impl Write) -> io::Result<Option<Sender<()>>> {
             match event::read()? {
                 Event::Key(key) => {
                     if !app.authenticating {
+                        let old_len = app.filtered_users().len();
+                        let old_auth_error = app.auth_error;
+                        
                         handle_input(&mut app, key);
+                        
+                        if app.filtered_users().len() != old_len || app.auth_error != old_auth_error {
+                            app.needs_clear = true;
+                        }
                     }
                 }
                 Event::Resize(_, _) => {}

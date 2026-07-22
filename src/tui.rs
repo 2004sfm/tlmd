@@ -142,11 +142,10 @@ pub fn draw_box(
     queue!(w, Print("─".repeat(right_pad as usize)))?;
     queue!(w, Print("┐"))?;
 
-    // Side borders with cleared interior
+    // Side borders without clearing interior to prevent flickering
     for row in 1..height.saturating_sub(1) {
         queue!(w, cursor::MoveTo(x, y + row))?;
         queue!(w, Print("│"))?;
-        queue!(w, Print(" ".repeat(width.saturating_sub(2) as usize)))?;
         queue!(w, cursor::MoveTo(x + width - 1, y + row))?;
         queue!(w, Print("│"))?;
     }
@@ -186,9 +185,14 @@ pub fn draw_button_pair(
     };
 
     let total_len = buttons_len + gap.len() as u16;
-    let btn_x = x + (box_width.saturating_sub(total_len)) / 2;
+    let inner_width = box_width.saturating_sub(2);
+    let left_spaces_len = (inner_width.saturating_sub(total_len)) / 2;
+    let right_spaces_len = inner_width.saturating_sub(total_len + left_spaces_len);
 
-    queue!(w, cursor::MoveTo(btn_x, y))?;
+    // Start drawing from the inner left edge
+    queue!(w, cursor::MoveTo(x + 1, y))?;
+    queue!(w, SetForegroundColor(FG), SetBackgroundColor(BG))?;
+    queue!(w, Print(" ".repeat(left_spaces_len as usize)))?;
 
     // Left button
     if button_focus == Some(0) {
@@ -216,6 +220,7 @@ pub fn draw_button_pair(
     }
 
     queue!(w, SetForegroundColor(FG), SetBackgroundColor(BG))?;
+    queue!(w, Print(" ".repeat(right_spaces_len as usize)))?;
     Ok(())
 }
 
@@ -295,8 +300,16 @@ pub fn draw_highlighted_row(
 }
 
 /// Draw a normal row.
-pub fn draw_normal_row(w: &mut impl Write, x: u16, y: u16, text: &str) -> io::Result<()> {
-    draw_text(w, x + 2, y, text, FG, BG)
+pub fn draw_normal_row(
+    w: &mut impl Write,
+    x: u16,
+    y: u16,
+    text: &str,
+    width: u16,
+) -> io::Result<()> {
+    let inner = width.saturating_sub(4) as usize;
+    let padded = format!("{text:<inner$}");
+    draw_text(w, x + 2, y, &padded, FG, BG)
 }
 
 pub const ICON_FILLED: &[&str] = &[
