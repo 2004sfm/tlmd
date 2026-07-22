@@ -42,49 +42,21 @@ pub fn render(w: &mut impl Write, app: &App) -> io::Result<()> {
     // Draw the top header at absolute zero without padding
     draw_text(w, 0, 0, "Terminal Login Manager Daemon", FG, BG)?;
 
-    let cursor_pos = match &app.screen {
+    let cursor_pos = match app.screen {
         Screen::UserSelect => {
-            let filtered = app.filtered_users();
             screen_users::render(
                 w,
                 cols,
                 rows,
-                &filtered,
-                app.selected_index,
-                app.search_active,
-                &app.search_query,
-                app.button_focus,
-                app.confirm_action.as_ref(),
-                app.confirm_focus,
-                app.icon_style,
+                app,
             )?
         }
         Screen::Login => {
-            let username = app.selected_username().unwrap_or("?");
-            let show_last_char = app
-                .unmasked_until
-                .map(|until| std::time::Instant::now() < until)
-                .unwrap_or(false);
-
-            let show_delete_flash = app
-                .deleted_until
-                .map(|until| std::time::Instant::now() < until)
-                .unwrap_or(false);
-
             screen_login::render(
                 w,
                 cols,
                 rows,
-                username,
-                &app.password,
-                app.auth_error,
-                app.authenticating,
-                app.spinner_frame,
-                app.button_focus,
-                show_last_char,
-                show_delete_flash,
-                app.filtered_users().len(),
-                app.icon_style,
+                app,
             )?
         }
     };

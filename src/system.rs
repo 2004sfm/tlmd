@@ -64,8 +64,8 @@ pub fn launch_uwsm(username: &str, envlist: pam_client2::env_list::EnvList) {
         .env("TERM", std::env::var("TERM").unwrap_or_else(|_| "linux".to_string()))
         .status();
     
-    if let Ok(sel_st) = select_status {
-        if sel_st.success() {
+    if let Ok(sel_st) = select_status
+        && sel_st.success() {
             // 2. Exec into the selected compositor
             let err = std::process::Command::new("uwsm")
                 .arg("start")
@@ -80,7 +80,6 @@ pub fn launch_uwsm(username: &str, envlist: pam_client2::env_list::EnvList) {
                 .exec();
             eprintln!("Failed to exec uwsm start default: {err}");
         }
-    }
 
     // If uwsm is not installed, fails, or we didn't start it, fallback to the user's default login shell
     let shell_err = std::process::Command::new(user.shell())

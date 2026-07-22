@@ -15,15 +15,17 @@ pub fn render(
     w: &mut impl Write,
     cols: u16,
     rows: u16,
-    users: &[&str],
-    selected_index: usize,
-    search_active: bool,
-    search_query: &str,
-    button_focus: Option<usize>,
-    confirm_action: Option<&crate::system::SystemAction>,
-    confirm_focus: usize,
-    icon_style: crate::tui::IconStyle,
+    app: &crate::App,
 ) -> io::Result<Option<(u16, u16)>> {
+    let filtered_users = app.filtered_users();
+    let users = &filtered_users;
+    let selected_index = app.selected_index;
+    let search_active = app.search_active;
+    let search_query = &app.search_query;
+    let button_focus = app.button_focus;
+    let confirm_action = app.confirm_action.as_ref();
+    let confirm_focus = app.confirm_focus;
+    let icon_style = app.icon_style;
     let mut cursor_pos = None;
     
     if let Some(action) = confirm_action {
@@ -43,7 +45,7 @@ pub fn render(
         return Ok(None);
     }
 
-    let visible_count = users.len().min(MAX_VISIBLE).max(1);
+    let visible_count = users.len().clamp(1, MAX_VISIBLE);
     
     // Box height is strictly constant. 
     // Layout: top(1) + pad(1) + users(visible) + pad(1) + buttons_or_search(1) + pad(1) + bottom(1) = visible + 6

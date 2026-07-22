@@ -16,17 +16,25 @@ pub fn render(
     w: &mut impl Write,
     cols: u16,
     rows: u16,
-    username: &str,
-    password: &str,
-    auth_error: bool,
-    authenticating: bool,
-    spinner_frame: usize,
-    button_focus: Option<usize>,
-    show_last_char: bool,
-    show_delete_flash: bool,
-    num_users: usize,
-    icon_style: crate::tui::IconStyle,
+    app: &crate::App,
 ) -> io::Result<Option<(u16, u16)>> {
+    let username = app.selected_username().unwrap_or("?");
+    let password = &app.password;
+    let auth_error = app.auth_error;
+    let authenticating = app.authenticating;
+    let spinner_frame = app.spinner_frame;
+    let button_focus = app.button_focus;
+    let icon_style = app.icon_style;
+    
+    let show_last_char = app.unmasked_until
+        .map(|until| std::time::Instant::now() < until)
+        .unwrap_or(false);
+        
+    let show_delete_flash = app.deleted_until
+        .map(|until| std::time::Instant::now() < until)
+        .unwrap_or(false);
+        
+    let num_users = app.filtered_users().len();
     const SPINNER: [char; 8] = ['⣾', '⣽', '⣻', '⢿', '⡿', '⣟', '⣯', '⣷'];
 
     // Box grows by 2 rows when error is shown

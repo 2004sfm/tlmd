@@ -61,18 +61,24 @@ pub struct App {
     pub needs_clear: bool,
 }
 
+impl Default for App {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl App {
     pub fn new() -> Self {
         let users = users::list_real_users();
         
-        let mut icon_style = tui::IconStyle::None;
-        for arg in std::env::args().skip(1) {
-            if arg == "--icon=filled" {
-                icon_style = tui::IconStyle::Filled;
-            } else if arg == "--icon=outline" {
-                icon_style = tui::IconStyle::Outline;
-            }
-        }
+        let icon_style = std::env::args()
+            .skip(1)
+            .find_map(|arg| match arg.as_str() {
+                "--icon=filled" => Some(tui::IconStyle::Filled),
+                "--icon=outline" => Some(tui::IconStyle::Outline),
+                _ => None,
+            })
+            .unwrap_or(tui::IconStyle::None);
 
         Self {
             screen: Screen::UserSelect,
@@ -101,34 +107,22 @@ impl App {
     /// Clear expired timeouts.
     pub fn tick_timeouts(&mut self) {
         let now = Instant::now();
-        if let Some(t) = self.unmasked_until {
-            if now >= t {
+        if let Some(t) = self.unmasked_until
+            && now >= t {
                 self.unmasked_until = None;
             }
-        }
-        if let Some(t) = self.deleted_until {
-            if now >= t {
+        if let Some(t) = self.deleted_until
+            && now >= t {
                 self.deleted_until = None;
             }
-        }
     }
 
     /// Get duration until the next timeout expires.
     pub fn timeout_duration(&self) -> Option<Duration> {
         let now = Instant::now();
-        let mut dur = None;
-        if let Some(t) = self.unmasked_until {
-            if t > now {
-                dur = Some(t.duration_since(now));
-            }
-        }
-        if let Some(t) = self.deleted_until {
-            if t > now {
-                let d = t.duration_since(now);
-                dur = Some(dur.map_or(d, |min_d| d.min(min_d)));
-            }
-        }
-        dur
+        let unmasked = self.unmasked_until.filter(|&t| t > now).map(|t| t.duration_since(now));
+        let deleted = self.deleted_until.filter(|&t| t > now).map(|t| t.duration_since(now));
+        unmasked.into_iter().chain(deleted).min()
     }
 
     /// Return the filtered user list based on the current search query.
@@ -148,6 +142,24 @@ impl App {
     /// Get the currently selected username (from the filtered view).
     pub fn selected_username(&self) -> Option<&str> {
         self.filtered_users().get(self.selected_index).copied()
+    }
+
+    /// Transition to the login screen cleanly.
+    pub fn transition_to_login(&mut self) {
+        self.password.clear();
+        self.auth_error = false;
+        self.button_focus = None;
+        self.screen = Screen::Login;
+        self.needs_clear = true;
+    }
+
+    /// Transition back to the user selection screen cleanly.
+    pub fn transition_to_user_select(&mut self) {
+        self.password.clear();
+        self.auth_error = false;
+        self.button_focus = None;
+        self.screen = Screen::UserSelect;
+        self.needs_clear = true;
     }
 }
 
@@ -203,8 +215,8 @@ fn run(stdout: &mut impl Write) -> io::Result<Option<Sender<()>>> {
         app.tick_timeouts();
 
         // Poll PAM result when auth is running in background
-        if app.authenticating {
-            if let Some(rx) = &app.auth_rx {
+        if app.authenticating
+            && let Some(rx) = &app.auth_rx {
                 use std::sync::mpsc::TryRecvError;
                 match rx.try_recv() {
                     Ok(true) => {
@@ -224,7 +236,6 @@ fn run(stdout: &mut impl Write) -> io::Result<Option<Sender<()>>> {
                     }
                 }
             }
-        }
 
         tui::render(stdout, &app)?;
         app.needs_clear = false;
@@ -325,11 +336,10 @@ fn handle_confirm(app: &mut App, key: KeyEvent) {
         KeyCode::Enter => {
             if app.confirm_focus == 1 {
                 // Confirmed — execute the action
-                if let Some(action) = app.confirm_action.take() {
-                    match action {
-                        system::SystemAction::Shutdown => system::shutdown(),
-                        system::SystemAction::Reboot => system::reboot(),
-                    }
+                let Some(action) = app.confirm_action.take() else { return };
+                match action {
+                    system::SystemAction::Shutdown => system::shutdown(),
+                    system::SystemAction::Reboot => system::reboot(),
                 }
             } else {
                 // Cancelled
@@ -389,11 +399,7 @@ fn handle_user_select(app: &mut App, key: KeyEvent) {
             app.button_focus = Some(1);
         }
         KeyCode::Enter => {
-            app.password.clear();
-            app.auth_error = false;
-            app.button_focus = None;
-            app.screen = Screen::Login;
-            app.needs_clear = true;
+            app.transition_to_login();
         }
         KeyCode::Char('/') => {
             app.search_active = true;
@@ -460,11 +466,7 @@ fn handle_search(app: &mut App, key: KeyEvent) {
         }
         KeyCode::Enter => {
             if !app.filtered_users().is_empty() {
-                app.password.clear();
-                app.auth_error = false;
-                app.button_focus = None;
-                app.screen = Screen::Login;
-                app.needs_clear = true;
+                app.transition_to_login();
             }
         }
         KeyCode::Backspace => {
@@ -517,11 +519,7 @@ fn handle_login(app: &mut App, key: KeyEvent) {
 
     match key.code {
         KeyCode::Esc => {
-            app.password.clear();
-            app.auth_error = false;
-            app.button_focus = None;
-            app.screen = Screen::UserSelect;
-            app.needs_clear = true;
+            app.transition_to_user_select();
         }
         KeyCode::Enter => {
             let username = app.selected_username().unwrap_or("").to_string();
@@ -576,22 +574,13 @@ fn handle_login_buttons(app: &mut App, key: KeyEvent) {
             app.button_focus = None;
         }
         KeyCode::Esc => {
-            app.password.clear();
-            app.auth_error = false;
-            app.button_focus = None;
-            app.screen = Screen::UserSelect;
-            app.needs_clear = true;
+            app.transition_to_user_select();
         }
         KeyCode::Enter => {
             match focus {
                 0 => {
                     // Back
-                    app.password.clear();
-                    app.auth_error = false;
-                    app.button_focus = None;
-                    app.screen = Screen::UserSelect;
-            app.needs_clear = true;
-                    app.needs_clear = true;
+                    app.transition_to_user_select();
                 }
                 1 => {
                     // Confirm

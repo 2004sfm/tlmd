@@ -40,9 +40,9 @@ pub fn authenticate_and_launch(
 ) {
     let conv = Silent::new(password);
 
-    if let Ok(mut ctx) = Context::new("login", Some(username), conv) {
-        if matches!(ctx.authenticate(Flag::NONE), Ok(())) && matches!(ctx.acct_mgmt(Flag::NONE), Ok(())) {
-            if let Ok(_session) = ctx.open_session(Flag::NONE) {
+    if let Ok(mut ctx) = Context::new("login", Some(username), conv)
+        && matches!(ctx.authenticate(Flag::NONE), Ok(())) && matches!(ctx.acct_mgmt(Flag::NONE), Ok(()))
+            && let Ok(_session) = ctx.open_session(Flag::NONE) {
                 // Tell main thread we succeeded
                 let _ = auth_tx.send(true);
                 
@@ -52,8 +52,6 @@ pub fn authenticate_and_launch(
                 // Exec into uwsm!
                 crate::system::launch_uwsm(username, _session.envlist());
             }
-        }
-    }
 
     // If we get here, authentication or session opening failed
     let _ = auth_tx.send(false);
