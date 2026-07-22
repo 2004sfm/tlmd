@@ -83,7 +83,7 @@ graph TD
 **Build & Install:**
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/tlmd.git
+git clone https://github.com/2004sfm/tlmd.git
 cd tlmd
 
 # Build for release
@@ -152,7 +152,7 @@ To run `tlmd` automatically at boot on your main TTY (`tty1`), you need to creat
 ```ini
 [Unit]
 Description=Terminal Login Manager Daemon
-Documentation=https://github.com/yourusername/tlmd
+Documentation=https://github.com/2004sfm/tlmd
 After=systemd-user-sessions.service plymouth-quit-wait.service
 Conflicts=getty@tty1.service
 
